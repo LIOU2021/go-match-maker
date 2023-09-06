@@ -44,12 +44,14 @@ func (h *Hub) UnRegisterEvent(m *Member) (err error) {
 		return ErrMemberNotExists
 	}
 
+	// 移除成員所在的集合
 	if err := rdb.SRem(context.Background(), memberKey, m.Id).Err(); err != nil {
 		log.Fatal(err)
 	}
 
 	if rdb.SCard(context.Background(), memberKey).Val() == 0 { // 该房间内没人了
 		rdb.SRem(context.Background(), h.roomKey, m.RoomId) // 移除房间
+		h.DebugLog("remove room: %s\n", m.RoomId)
 	}
 
 	fmt.Printf("receive unregister - roomId: %s, userId: %s \n", m.RoomId, m.Id)

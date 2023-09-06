@@ -42,7 +42,11 @@ func init() {
 func main() {
 	gin.SetMode(gin.ReleaseMode)
 
-	r := gin.Default()
+	r := gin.New()
+	r.Use(
+		gin.Recovery(),
+		// gin.Logger(),
+	)
 
 	r.GET("members", func(c *gin.Context) {
 		c.JSON(200, myHub.GetMembers())
