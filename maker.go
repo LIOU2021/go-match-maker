@@ -89,19 +89,18 @@ func (h *Hub) Run() {
 			close(h.shutDown)
 
 			if h.mode == Release {
-				rdb.Del(context.Background(), h.roomKey)
-
 				for {
 					var keys []string
 					var err error
 					var cursor uint64
-					keys, cursor, err = rdb.SScan(context.Background(), h.roomKey, cursor, "*", 0).Result()
+					keys, cursor, err = rdb.SScan(context.Background(), h.roomKey, cursor, "*", 10).Result()
 					if err != nil {
 						log.Fatal(err)
 					}
-
+					fmt.Println("scan len ", len(keys))
 					for _, roomId := range keys {
 						memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, roomId)
+						fmt.Println(memberKey)
 						rdb.Del(context.Background(), memberKey)
 					}
 
@@ -110,6 +109,9 @@ func (h *Hub) Run() {
 						break
 					}
 				}
+
+				rdb.Del(context.Background(), h.roomKey)
+
 			}
 
 			fmt.Println("close match maker")
