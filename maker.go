@@ -71,9 +71,17 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case m := <-h.register:
-			go h.RegisterEvent(m)
+			go func() {
+				if err := h.RegisterEvent(m); err != nil {
+					fmt.Printf("[registerEvent Err] id: %s - %v\n", m.Id, err)
+				}
+			}()
 		case m := <-h.unRegister:
-			go h.UnRegisterEvent(m)
+			go func() {
+				if err := h.UnRegisterEvent(m); err != nil {
+					fmt.Printf("[unregisterEvent Err] id: %s - %v\n", m.Id, err)
+				}
+			}()
 		case <-h.shutDown:
 			close(h.register)
 			close(h.broadcast)

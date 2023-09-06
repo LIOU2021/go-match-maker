@@ -8,6 +8,7 @@ import (
 )
 
 var ErrMemberExists = errors.New("member already exists")
+var ErrMemberNotExists = errors.New("member Not exists")
 
 func (h *Hub) RegisterEvent(m *Member) (err error) {
 	h.Lock()
@@ -24,8 +25,7 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 	}
 
 	if _, ok := h.members[m.Id]; ok {
-		err = ErrMemberExists
-		return
+		return ErrMemberExists
 	}
 
 	h.members[m.Id] = m
@@ -33,11 +33,17 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 	return
 }
 
-func (h *Hub) UnRegisterEvent(m *Member) {
+func (h *Hub) UnRegisterEvent(m *Member) (err error) {
 	h.Lock()
 	defer h.Unlock()
 	delete(h.members, m.Id)
+
 	memberKey := fmt.Sprintf("%s:member", h.roomKey)
+
+	if !rdb.SIsMember(context.Background(), memberKey, m.Id).Val() {
+		return ErrMemberNotExists
+	}
+
 	if err := rdb.SRem(context.Background(), memberKey, m.Id).Err(); err != nil {
 		log.Fatal(err)
 	}
@@ -47,4 +53,5 @@ func (h *Hub) UnRegisterEvent(m *Member) {
 	}
 
 	fmt.Println("receive unregister: ", m)
+	return
 }
