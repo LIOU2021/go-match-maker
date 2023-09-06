@@ -10,6 +10,7 @@ import (
 
 	gomatchmaker "github.com/LIOU2021/go-match-maker"
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 )
 
 var myHub *gomatchmaker.Hub
@@ -20,6 +21,16 @@ var unMatchCount = 0
 var unRegisterCount = 0
 var unRegisterCountMX = sync.Mutex{}
 var alreadyClose = false
+
+var rdb = redis.NewClient(&redis.Options{
+	Addr:     "localhost:6379",
+	Password: "", // no password set
+	DB:       0,  // use default DB
+})
+
+func init() {
+	gomatchmaker.RegisterRedisClient(rdb)
+}
 
 func main() {
 	config := gomatchmaker.Config{

@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/redis/go-redis/v9"
 
 	gomatchmaker "github.com/LIOU2021/go-match-maker"
 )
@@ -22,7 +23,15 @@ type req struct {
 	Id     string      `json:"id" binding:"required"` // user id
 }
 
+var rdb = redis.NewClient(&redis.Options{
+	Addr:     "localhost:6379",
+	Password: "", // no password set
+	DB:       0,  // use default DB
+})
+
 func init() {
+	gomatchmaker.RegisterRedisClient(rdb)
+
 	config := gomatchmaker.Config{
 		RegisterBuff:   200,
 		BroadcastBuff:  200,
