@@ -6,10 +6,12 @@ type Config struct {
 	RegisterBuff   int
 	BroadcastBuff  int
 	UnRegisterBuff int
+	Room           []string // 有哪些房间
 }
 
 type Member struct {
-	Data interface{}
+	Data   interface{}
+	RoomId string
 }
 
 type Hub struct {

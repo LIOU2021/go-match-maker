@@ -14,6 +14,7 @@ func main() {
 		RegisterBuff:   200,
 		BroadcastBuff:  200,
 		UnRegisterBuff: 200,
+		Room:           []string{"a", "b", "c", "d"},
 	}
 
 	myHub = gomatchmakek.New(&config)
@@ -30,7 +31,8 @@ func main() {
 func testJoin() {
 	for i := 0; i < 10; i++ {
 		m := &gomatchmakek.Member{
-			Data: i,
+			Data:   i,
+			RoomId: testGetRoomId(i),
 		}
 
 		myHub.Join(m)
@@ -40,11 +42,26 @@ func testJoin() {
 func testLeave() {
 	for i := 10; i > 0; i-- {
 		m := &gomatchmakek.Member{
-			Data: i,
+			Data:   i,
+			RoomId: testGetRoomId(i),
 		}
 
 		myHub.Leave(m)
 	}
+}
+
+func testGetRoomId(i int) (roomId string) {
+	if i%2 == 0 {
+		roomId = "a"
+	} else if i%3 == 0 {
+		roomId = "b"
+	} else if i%4 == 0 {
+		roomId = "c"
+	} else {
+		roomId = "d"
+	}
+	return roomId
+
 }
 
 func testNotification() {
