@@ -51,9 +51,9 @@ func (h *Hub) Run() {
 	for {
 		select {
 		case m := <-h.register:
-			fmt.Println("receive register: ", m)
+			go h.RegisterEvent(m)
 		case m := <-h.unRegister:
-			fmt.Println("receive unregister: ", m)
+			go h.UnRegisterEvent(m)
 		case <-h.shutDown:
 			close(h.register)
 			close(h.broadcast)
