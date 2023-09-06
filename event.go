@@ -34,9 +34,6 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 }
 
 func (h *Hub) UnRegisterEvent(m *Member) (err error) {
-	h.Lock()
-	defer h.Unlock()
-
 	memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, m.RoomId)
 
 	if !rdb.SIsMember(context.Background(), memberKey, m.Id).Val() {
@@ -48,7 +45,7 @@ func (h *Hub) UnRegisterEvent(m *Member) (err error) {
 		log.Fatal(err)
 	}
 
-	h.memberLeaveLogic(memberKey, m)
+	h.memberLeaveLogic(memberKey, m.Id)
 
 	fmt.Printf("receive unregister - roomId: %s, userId: %s \n", m.RoomId, m.Id)
 	return

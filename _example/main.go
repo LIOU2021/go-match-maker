@@ -2,50 +2,77 @@ package main
 
 import (
 	"fmt"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
 	"time"
 
-	gomatchmakek "github.com/LIOU2021/go-match-maker"
+	gomatchmaker "github.com/LIOU2021/go-match-maker"
 	"github.com/google/uuid"
 )
 
-var myHub *gomatchmakek.Hub
+var myHub *gomatchmaker.Hub
+
+var count = 100 // 模擬幾個參與者併發
+var matchCount = 0
+var unMatchCount = 0
+var alreadyClose = false
 
 func main() {
-	config := gomatchmakek.Config{
+	config := gomatchmaker.Config{
 		RegisterBuff:   200,
 		BroadcastBuff:  200,
 		UnRegisterBuff: 200,
 		Room:           []string{"a", "b", "c", "d"},
 		HubName:        "go-match-maker",
-		// Mode:           gomatchmakek.Debug,
-		Mode:     gomatchmakek.Release,
+		// Mode:           gomatchmaker.Debug,
+		Mode:     gomatchmaker.Release,
 		Interval: time.Millisecond * 200,
 	}
 
-	myHub = gomatchmakek.New(&config)
+	myHub = gomatchmaker.New(&config)
 
 	go myHub.Run()
 
 	testJoin()
-	testLeave()
+	// testLeave()
 	go testNotification()
 
-	go testNewData()
+	// go testNewData()
 
 	time.AfterFunc(2*time.Second, func() {
-		for _, m := range myHub.GetMembers() {
-			fmt.Printf("剩餘roomId: %s, Id: %s\n", m.RoomId, m.Id)
-		}
-		myHub.Close()
+		testClose()
+		alreadyClose = true
 	})
 
-	select {}
+	ch := make(chan os.Signal, 1)
+	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
+	<-ch
+
+	testClose()
 }
 
-var testData []*gomatchmakek.Member
+func testClose() {
+	if alreadyClose {
+		return
+	}
+
+	for _, m := range myHub.GetMembers() {
+		unMatchCount++
+		fmt.Printf("剩餘roomId: %s, Id: %s\n", m.RoomId, m.Id)
+	}
+	fmt.Println("unMatchCount: ", unMatchCount)
+	myHub.Close()
+}
+
+var testData = struct {
+	sync.RWMutex
+	list []*gomatchmaker.Member
+}{}
 
 func testNewData() {
-	testNewData := &gomatchmakek.Member{ // 增加初始化不存在的room做测试
+	testNewData := &gomatchmaker.Member{ // 增加初始化不存在的room做测试
 		Data:   99,
 		RoomId: "e",
 		Id:     uuid.New().String(),
@@ -55,21 +82,26 @@ func testNewData() {
 }
 
 func testJoin() {
-	for i := 0; i < 6; i++ {
-		m := &gomatchmakek.Member{
-			Data:   i,
-			Id:     uuid.New().String(),
-			RoomId: testGetRoomId(i),
-		}
-		testData = append(testData, m)
-		myHub.Join(m)
+	for i := 0; i < count; i++ {
+		go func(index int) {
+			m := &gomatchmaker.Member{
+				Data:   index,
+				Id:     uuid.New().String(),
+				RoomId: testGetRoomId(index),
+			}
+			testData.Lock()
+			testData.list = append(testData.list, m)
+			testData.Unlock()
+			myHub.Join(m)
+		}(i)
 	}
 }
 
 func testLeave() {
 	for i := 0; i < 2; i++ {
-		m := testData[i]
-
+		testData.RLock()
+		m := testData.list[i]
+		testData.RUnlock()
 		myHub.Leave(m)
 	}
 }
@@ -93,7 +125,9 @@ func testNotification() {
 		fmt.Print("receive notification: ")
 		for _, v := range ms {
 			fmt.Print("[", v.RoomId, "] : ", v.Id, ", ")
+			matchCount++
 		}
 		fmt.Println("")
 	}
+	fmt.Println("matchCount: ", matchCount)
 }

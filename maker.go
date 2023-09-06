@@ -32,19 +32,25 @@ type Member struct {
 
 type Hub struct {
 	register    chan *Member       // 加入撮合
-	broadcast   chan []*Member     // 撮合成功推播
+	broadcast   chan []Member      // 撮合成功推播
 	unRegister  chan *Member       // 退出撮合
 	shutDown    chan struct{}      // 关闭服务
 	runnerClose chan struct{}      // close match maker runner
 	roomKey     string             // 存放在缓存的key名称
 	members     map[string]*Member // 存总用户。key为user id
-	sync.Mutex
+	sync.RWMutex
 	mode     mode          // 模式
 	Interval time.Duration // 搓合執行間格
 }
 
-func (h *Hub) GetMembers() map[string]*Member {
-	return h.members
+func (h *Hub) GetMembers() map[string]Member {
+	h.RLock()
+	defer h.RUnlock()
+	members := make(map[string]Member)
+	for i := range h.members {
+		members[i] = *h.members[i]
+	}
+	return members
 }
 
 // new hub instance
@@ -72,7 +78,7 @@ func New(config *Config) *Hub {
 
 	return &Hub{
 		register:    make(chan *Member, config.RegisterBuff),
-		broadcast:   make(chan []*Member, config.BroadcastBuff),
+		broadcast:   make(chan []Member, config.BroadcastBuff),
 		unRegister:  make(chan *Member, config.UnRegisterBuff),
 		shutDown:    make(chan struct{}),
 		runnerClose: make(chan struct{}),
@@ -130,7 +136,9 @@ func (h *Hub) ClearCache() {
 
 		for _, roomId := range keys {
 			memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, roomId)
-			rdb.Del(context.Background(), memberKey)
+			if err := rdb.Del(context.Background(), memberKey).Err(); err != nil {
+				log.Fatal(err)
+			}
 		}
 
 		// 没有更多key了
@@ -165,7 +173,7 @@ func (h *Hub) Leave(member *Member) {
 }
 
 // receive match notification
-func (h *Hub) Notification() <-chan []*Member {
+func (h *Hub) Notification() <-chan []Member {
 	return h.broadcast
 }
 
@@ -184,6 +192,11 @@ func (h *Hub) executeMatchRunner() {
 			}
 
 			rooms := rdb.SRandMemberN(ctx, h.roomKey, 2).Val()
+			if len(rooms) != 2 {
+				time.Sleep(h.Interval)
+				h.DebugLog("群组数量不足，等待中...\n")
+				continue
+			}
 			r1, r2 := rooms[0], rooms[1]
 			h.DebugLog("筛选出房间 - r1: %s, r2: %s \n", r1, r2)
 			memberKey1 := fmt.Sprintf("%s:member:%s", h.roomKey, r1)
@@ -201,20 +214,18 @@ func (h *Hub) executeMatchRunner() {
 				continue
 			}
 
-			h.Lock()
-
 			uid1 := rdb.SPop(ctx, memberKey1).Val()
 			uid2 := rdb.SPop(ctx, memberKey2).Val()
 
-			h.broadcast <- []*Member{
-				h.members[uid1],
-				h.members[uid2],
+			h.RLock()
+			h.broadcast <- []Member{
+				*h.members[uid1],
+				*h.members[uid2],
 			}
+			h.RUnlock()
 
-			go h.memberLeaveLogic(memberKey1, h.members[uid1])
-			go h.memberLeaveLogic(memberKey2, h.members[uid2])
-
-			h.Unlock()
+			go h.memberLeaveLogic(memberKey1, uid1)
+			go h.memberLeaveLogic(memberKey2, uid2)
 		}
 
 	}
@@ -228,11 +239,23 @@ func (h *Hub) DebugLog(format string, arg ...any) {
 
 // 當成員離開集合後要處理的邏輯
 // 判斷群內還有沒有人，如果沒有人就要移除room
-func (h *Hub) memberLeaveLogic(memberKey string, m *Member) {
+func (h *Hub) memberLeaveLogic(memberKey, uid string) {
+	h.Lock()
+	defer h.Unlock()
+
+	var m *Member
+	if v, ok := h.members[uid]; !ok {
+		log.Fatal("member not found from memberLeaveLogic")
+	} else {
+		m = v
+	}
+
 	if rdb.SCard(context.Background(), memberKey).Val() == 0 { // 该房间内没人了
 		rdb.SRem(context.Background(), h.roomKey, m.RoomId) // 移除房间
 		h.DebugLog("remove room: %s\n", m.RoomId)
 	}
 
-	delete(h.members, m.Id)
+	if _, exists := h.members[m.Id]; exists {
+		delete(h.members, m.Id)
+	}
 }

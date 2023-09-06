@@ -11,10 +11,10 @@ import (
 
 	"github.com/gin-gonic/gin"
 
-	gomatchmakek "github.com/LIOU2021/go-match-maker"
+	gomatchmaker "github.com/LIOU2021/go-match-maker"
 )
 
-var myHub *gomatchmakek.Hub
+var myHub *gomatchmaker.Hub
 
 type req struct {
 	Data   interface{} `json:"data" binding:"required"` //require
@@ -23,18 +23,18 @@ type req struct {
 }
 
 func init() {
-	config := gomatchmakek.Config{
+	config := gomatchmaker.Config{
 		RegisterBuff:   200,
 		BroadcastBuff:  200,
 		UnRegisterBuff: 200,
 		Room:           []string{"a", "b", "c", "d"},
 		HubName:        "go-match-maker",
-		// Mode:           gomatchmakek.Debug,
-		Mode:     gomatchmakek.Release,
+		// Mode:           gomatchmaker.Debug,
+		Mode:     gomatchmaker.Release,
 		Interval: time.Millisecond * 200,
 	}
 
-	myHub = gomatchmakek.New(&config)
+	myHub = gomatchmaker.New(&config)
 
 	go myHub.Run()
 }
@@ -60,7 +60,7 @@ func main() {
 			return
 		}
 
-		testNewData := &gomatchmakek.Member{
+		testNewData := &gomatchmaker.Member{
 			Data:   r.Data,
 			RoomId: r.RoomId,
 			Id:     r.Id,
@@ -77,7 +77,7 @@ func main() {
 			return
 		}
 
-		testNewData := &gomatchmakek.Member{
+		testNewData := &gomatchmaker.Member{
 			Data:   r.Data,
 			RoomId: r.RoomId,
 			Id:     r.Id,
