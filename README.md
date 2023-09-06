@@ -4,6 +4,3 @@
     ```go
     go run ./cmd/main.go
     ```
-
-# todo
-- 测试api server是否正常运作，以及测试get members
