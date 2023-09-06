@@ -4,3 +4,6 @@
     ```go
     go run ./cmd/main.go
     ```
+# todo
+- 新增初始化檢查緩存有無資料的bug
+- 測試腳本執行buff比較小的狀態

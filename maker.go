@@ -19,9 +19,11 @@ type Config struct {
 	RegisterBuff   int
 	BroadcastBuff  int
 	UnRegisterBuff int
-	Room           []string      // 有哪些房间
-	Mode           mode          // 開發模式
-	Interval       time.Duration // 搓合執行間格
+	Room           []string       // 有哪些房间
+	Mode           mode           // 開發模式
+	Interval       time.Duration  // 搓合執行間格
+	RegisterFunc   func(m Member) // 當註冊成功時，執行的func
+	UnRegisterFunc func(m Member) // 當註銷成功時，執行的func
 }
 
 type Member struct {
@@ -39,8 +41,10 @@ type Hub struct {
 	roomKey     string             // 存放在缓存的key名称
 	members     map[string]*Member // 存总用户。key为user id
 	sync.RWMutex
-	mode     mode          // 模式
-	Interval time.Duration // 搓合執行間格
+	mode           mode          // 模式
+	Interval       time.Duration // 搓合執行間格
+	RegisterFunc   func(m Member)
+	UnRegisterFunc func(m Member)
 }
 
 func (h *Hub) GetMembers() map[string]Member {
@@ -77,15 +81,17 @@ func New(config *Config) *Hub {
 	}
 
 	return &Hub{
-		register:    make(chan *Member, config.RegisterBuff),
-		broadcast:   make(chan []Member, config.BroadcastBuff),
-		unRegister:  make(chan *Member, config.UnRegisterBuff),
-		shutDown:    make(chan struct{}),
-		runnerClose: make(chan struct{}),
-		roomKey:     config.HubName,
-		members:     make(map[string]*Member),
-		mode:        mode,
-		Interval:    t,
+		register:       make(chan *Member, config.RegisterBuff),
+		broadcast:      make(chan []Member, config.BroadcastBuff),
+		unRegister:     make(chan *Member, config.UnRegisterBuff),
+		shutDown:       make(chan struct{}),
+		runnerClose:    make(chan struct{}),
+		roomKey:        config.HubName,
+		members:        make(map[string]*Member),
+		mode:           mode,
+		Interval:       t,
+		RegisterFunc:   config.RegisterFunc,
+		UnRegisterFunc: config.UnRegisterFunc,
 	}
 }
 
@@ -100,12 +106,16 @@ func (h *Hub) Run() {
 			go func() {
 				if err := h.RegisterEvent(m); err != nil {
 					fmt.Printf("[registerEvent Err] - roomId:%s, id: %s - %v\n", m.RoomId, m.Id, err)
+				} else {
+					go h.RegisterFunc(*m)
 				}
 			}()
 		case m := <-h.unRegister:
 			go func() {
 				if err := h.UnRegisterEvent(m); err != nil {
 					fmt.Printf("[unregisterEvent Err] - roomId:%s, id: %s - %v\n", m.RoomId, m.Id, err)
+				} else {
+					go h.UnRegisterFunc(*m)
 				}
 			}()
 		case <-h.shutDown:

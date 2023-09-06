@@ -30,8 +30,10 @@ func init() {
 		Room:           []string{"a", "b", "c", "d"},
 		HubName:        "go-match-maker",
 		// Mode:           gomatchmaker.Debug,
-		Mode:     gomatchmaker.Release,
-		Interval: time.Millisecond * 200,
+		Mode:           gomatchmaker.Release,
+		Interval:       time.Millisecond * 200,
+		RegisterFunc:   func(m gomatchmaker.Member) {},
+		UnRegisterFunc: func(m gomatchmaker.Member) {},
 	}
 
 	myHub = gomatchmaker.New(&config)

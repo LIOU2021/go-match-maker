@@ -14,9 +14,11 @@ import (
 
 var myHub *gomatchmaker.Hub
 
-var count = 100 // 模擬幾個參與者併發
+var count = 500 // 模擬幾個參與者併發
 var matchCount = 0
 var unMatchCount = 0
+var unRegisterCount = 0
+var unRegisterCountMX = sync.Mutex{}
 var alreadyClose = false
 
 func main() {
@@ -29,6 +31,13 @@ func main() {
 		// Mode:           gomatchmaker.Debug,
 		Mode:     gomatchmaker.Release,
 		Interval: time.Millisecond * 200,
+		RegisterFunc: func(m gomatchmaker.Member) {
+		},
+		UnRegisterFunc: func(m gomatchmaker.Member) {
+			unRegisterCountMX.Lock()
+			defer unRegisterCountMX.Unlock()
+			unRegisterCount++
+		},
 	}
 
 	myHub = gomatchmaker.New(&config)
@@ -36,10 +45,11 @@ func main() {
 	go myHub.Run()
 
 	testJoin()
-	// testLeave()
+	testLeave()
+	fmt.Println("leave 結束======")
 	go testNotification()
 
-	// go testNewData()
+	go testNewData()
 
 	time.AfterFunc(2*time.Second, func() {
 		testClose()
@@ -62,8 +72,10 @@ func testClose() {
 		unMatchCount++
 		fmt.Printf("剩餘roomId: %s, Id: %s\n", m.RoomId, m.Id)
 	}
+	fmt.Println("unRegisterCount: ", unRegisterCount)
 	fmt.Println("unMatchCount: ", unMatchCount)
 	myHub.Close()
+	os.Exit(0)
 }
 
 var testData = struct {
@@ -98,11 +110,17 @@ func testJoin() {
 }
 
 func testLeave() {
-	for i := 0; i < 2; i++ {
+	i := 0
+	for i < count {
 		testData.RLock()
-		m := testData.list[i]
+		fmt.Println("d83xjisgjipofdsgji")
+		if i > len(testData.list)-1 {
+			time.Sleep(time.Millisecond * 200)
+			continue
+		}
+		myHub.Leave(testData.list[i])
+		i = i + 2
 		testData.RUnlock()
-		myHub.Leave(m)
 	}
 }
 
