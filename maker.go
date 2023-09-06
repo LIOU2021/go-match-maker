@@ -97,10 +97,9 @@ func (h *Hub) Run() {
 					if err != nil {
 						log.Fatal(err)
 					}
-					fmt.Println("scan len ", len(keys))
+
 					for _, roomId := range keys {
 						memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, roomId)
-						fmt.Println(memberKey)
 						rdb.Del(context.Background(), memberKey)
 					}
 
