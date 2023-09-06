@@ -24,6 +24,11 @@ func main() {
 	go testLeave()
 	go testNotification()
 
+	myHub.Join(&gomatchmakek.Member{ // 增加初始化不存在的room做测试
+		Data:   99,
+		RoomId: "e",
+	})
+
 	time.AfterFunc(1*time.Second, myHub.Close)
 
 	myHub.Run()
