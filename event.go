@@ -36,7 +36,6 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 func (h *Hub) UnRegisterEvent(m *Member) (err error) {
 	h.Lock()
 	defer h.Unlock()
-	delete(h.members, m.Id)
 
 	memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, m.RoomId)
 
@@ -49,10 +48,7 @@ func (h *Hub) UnRegisterEvent(m *Member) (err error) {
 		log.Fatal(err)
 	}
 
-	if rdb.SCard(context.Background(), memberKey).Val() == 0 { // 该房间内没人了
-		rdb.SRem(context.Background(), h.roomKey, m.RoomId) // 移除房间
-		h.DebugLog("remove room: %s\n", m.RoomId)
-	}
+	h.memberLeaveLogic(memberKey, m)
 
 	fmt.Printf("receive unregister - roomId: %s, userId: %s \n", m.RoomId, m.Id)
 	return

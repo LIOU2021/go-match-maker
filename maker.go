@@ -210,8 +210,10 @@ func (h *Hub) executeMatchRunner() {
 				h.members[uid1],
 				h.members[uid2],
 			}
-			delete(h.members, uid1)
-			delete(h.members, uid2)
+
+			go h.memberLeaveLogic(memberKey1, h.members[uid1])
+			go h.memberLeaveLogic(memberKey2, h.members[uid2])
+
 			h.Unlock()
 		}
 
@@ -222,4 +224,15 @@ func (h *Hub) DebugLog(format string, arg ...any) {
 	if h.mode == Debug {
 		fmt.Printf(format, arg...)
 	}
+}
+
+// 當成員離開集合後要處理的邏輯
+// 判斷群內還有沒有人，如果沒有人就要移除room
+func (h *Hub) memberLeaveLogic(memberKey string, m *Member) {
+	if rdb.SCard(context.Background(), memberKey).Val() == 0 { // 该房间内没人了
+		rdb.SRem(context.Background(), h.roomKey, m.RoomId) // 移除房间
+		h.DebugLog("remove room: %s\n", m.RoomId)
+	}
+
+	delete(h.members, m.Id)
 }
