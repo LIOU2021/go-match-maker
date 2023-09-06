@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"os/signal"
@@ -18,9 +17,9 @@ import (
 var myHub *gomatchmakek.Hub
 
 type req struct {
-	Data   interface{} `json:"data"`
-	RoomId string      `json:"roomId"`
-	Id     string      `json:"id"` // user id
+	Data   interface{} `json:"data" binding:"required"` //require
+	RoomId string      `json:"roomId" binding:"required"`
+	Id     string      `json:"id" binding:"required"` // user id
 }
 
 func main() {
@@ -32,7 +31,7 @@ func main() {
 	r.POST("join", func(c *gin.Context) {
 		r := &req{}
 
-		if err := c.BindJSON(&r); err != nil {
+		if err := c.ShouldBindJSON(&r); err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 			return
 		}
@@ -49,7 +48,7 @@ func main() {
 	r.POST("leave", func(c *gin.Context) {
 		r := &req{}
 
-		if err := c.BindJSON(&r); err != nil {
+		if err := c.ShouldBindJSON(&r); err != nil {
 			c.String(http.StatusBadRequest, err.Error())
 			return
 		}
@@ -66,7 +65,7 @@ func main() {
 	})
 
 	srv := &http.Server{
-		Addr:    ":8008",
+		Addr:    ":8080",
 		Handler: r,
 	}
 
@@ -80,12 +79,12 @@ func main() {
 
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	<-ch
-
+	fmt.Println("shutdown...")
 	c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(c); err != nil {
-		log.Println("srv.Shutdown:", err)
+		fmt.Println("srv.Shutdown:", err)
 	}
 	myHub.Close()
 }

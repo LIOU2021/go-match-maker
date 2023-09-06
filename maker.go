@@ -11,6 +11,7 @@ type mode string
 
 var Debug mode = "debug"
 var Release mode = "release"
+var closeSignal = make(chan struct{}, 1)
 
 type Config struct {
 	HubName        string
@@ -114,13 +115,19 @@ func (h *Hub) Run() {
 			}
 
 			fmt.Println("close match maker")
+			closeSignal <- struct{}{}
 			return
 		}
 	}
 }
 
+// 这个方法会堵塞，直到正常关闭hub
 func (h *Hub) Close() {
-	h.shutDown <- struct{}{}
+	go func() {
+		h.shutDown <- struct{}{}
+	}()
+	<-closeSignal
+	close(closeSignal)
 }
 
 // join match
