@@ -51,11 +51,11 @@ func testLeave() {
 }
 
 func testGetRoomId(i int) (roomId string) {
-	if i%2 == 0 {
+	if i%4 == 0 {
 		roomId = "a"
 	} else if i%3 == 0 {
 		roomId = "b"
-	} else if i%4 == 0 {
+	} else if i%2 == 0 {
 		roomId = "c"
 	} else {
 		roomId = "d"
