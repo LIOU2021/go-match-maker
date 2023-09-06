@@ -3,6 +3,7 @@
 - demo
     ```go
     go run ./cmd/main.go
+    // or
     go run ./_example/main.go
     ```
 - 當用戶加入時的roomId屬於當前hub中沒有的，那麼hub會自動增加該room到hub中
