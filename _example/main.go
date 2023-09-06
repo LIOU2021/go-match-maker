@@ -23,6 +23,8 @@ func main() {
 
 	myHub = gomatchmakek.New(&config)
 
+	go myHub.Run()
+
 	testJoin()
 	testLeave()
 	go testNotification()
@@ -31,7 +33,7 @@ func main() {
 
 	time.AfterFunc(2*time.Second, myHub.Close)
 
-	myHub.Run()
+	select {}
 }
 
 var testData []*gomatchmakek.Member

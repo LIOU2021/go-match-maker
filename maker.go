@@ -30,12 +30,13 @@ type Member struct {
 }
 
 type Hub struct {
-	register   chan *Member       // 加入撮合
-	broadcast  chan []*Member     // 撮合成功推播
-	unRegister chan *Member       // 退出撮合
-	shutDown   chan struct{}      // 关闭服务
-	roomKey    string             // 存放在缓存的key名称
-	members    map[string]*Member // 存总用户。key为user id
+	register    chan *Member       // 加入撮合
+	broadcast   chan []*Member     // 撮合成功推播
+	unRegister  chan *Member       // 退出撮合
+	shutDown    chan struct{}      // 关闭服务
+	runnerClose chan struct{}      // close match maker runner
+	roomKey     string             // 存放在缓存的key名称
+	members     map[string]*Member // 存总用户。key为user id
 	sync.Mutex
 	mode mode // 模式
 }
@@ -61,13 +62,14 @@ func New(config *Config) *Hub {
 	}
 
 	return &Hub{
-		register:   make(chan *Member, config.RegisterBuff),
-		broadcast:  make(chan []*Member, config.BroadcastBuff),
-		unRegister: make(chan *Member, config.UnRegisterBuff),
-		shutDown:   make(chan struct{}),
-		roomKey:    config.HubName,
-		members:    make(map[string]*Member),
-		mode:       mode,
+		register:    make(chan *Member, config.RegisterBuff),
+		broadcast:   make(chan []*Member, config.BroadcastBuff),
+		unRegister:  make(chan *Member, config.UnRegisterBuff),
+		shutDown:    make(chan struct{}),
+		runnerClose: make(chan struct{}),
+		roomKey:     config.HubName,
+		members:     make(map[string]*Member),
+		mode:        mode,
 	}
 }
 
@@ -95,6 +97,8 @@ func (h *Hub) Run() {
 			close(h.broadcast)
 			close(h.unRegister)
 			close(h.shutDown)
+			h.runnerClose <- struct{}{}
+			close(h.runnerClose)
 
 			if h.mode == Release {
 				for {
@@ -159,41 +163,47 @@ func (h *Hub) Notification() <-chan []*Member {
 func (h *Hub) executeMatchRunner() {
 	ctx := context.Background()
 	for {
-		if len := rdb.SCard(ctx, h.roomKey).Val(); len < 2 {
-			time.Sleep(200 * time.Millisecond)
-			fmt.Println("群组数量不足，等待中...")
-			continue
+		select {
+		case <-h.runnerClose:
+			return
+		default:
+			if len := rdb.SCard(ctx, h.roomKey).Val(); len < 2 {
+				time.Sleep(200 * time.Millisecond)
+				fmt.Println("群组数量不足，等待中...")
+				continue
+			}
+
+			rooms := rdb.SRandMemberN(ctx, h.roomKey, 2).Val()
+			r1, r2 := rooms[0], rooms[1]
+			fmt.Printf("筛选出房间 - r1: %s, r2: %s \n", r1, r2)
+			memberKey1 := fmt.Sprintf("%s:member:%s", h.roomKey, r1)
+			memberKey2 := fmt.Sprintf("%s:member:%s", h.roomKey, r2)
+
+			if len := rdb.SCard(ctx, memberKey1).Val(); len == 0 {
+				time.Sleep(200 * time.Millisecond)
+				fmt.Printf("%s 成员数量不足，等待中...\n", memberKey1)
+				continue
+			}
+
+			if len := rdb.SCard(ctx, memberKey2).Val(); len == 0 {
+				time.Sleep(200 * time.Millisecond)
+				fmt.Printf("%s 成员数量不足，等待中...\n", memberKey1)
+				continue
+			}
+
+			h.Lock()
+
+			uid1 := rdb.SPop(ctx, memberKey1).Val()
+			uid2 := rdb.SPop(ctx, memberKey2).Val()
+
+			h.broadcast <- []*Member{
+				h.members[uid1],
+				h.members[uid2],
+			}
+			delete(h.members, uid1)
+			delete(h.members, uid2)
+			h.Unlock()
 		}
 
-		rooms := rdb.SRandMemberN(ctx, h.roomKey, 2).Val()
-		r1, r2 := rooms[0], rooms[1]
-		fmt.Printf("筛选出房间 - r1: %s, r2: %s \n", r1, r2)
-		memberKey1 := fmt.Sprintf("%s:member:%s", h.roomKey, r1)
-		memberKey2 := fmt.Sprintf("%s:member:%s", h.roomKey, r2)
-
-		if len := rdb.SCard(ctx, memberKey1).Val(); len == 0 {
-			time.Sleep(200 * time.Millisecond)
-			fmt.Println("成员数量不足，等待中...")
-			continue
-		}
-
-		if len := rdb.SCard(ctx, memberKey2).Val(); len == 0 {
-			time.Sleep(200 * time.Millisecond)
-			fmt.Println("成员数量不足，等待中...")
-			continue
-		}
-
-		h.Lock()
-
-		uid1 := rdb.SPop(ctx, memberKey1).Val()
-		uid2 := rdb.SPop(ctx, memberKey2).Val()
-
-		h.broadcast <- []*Member{
-			h.members[uid1],
-			h.members[uid2],
-		}
-		delete(h.members, uid1)
-		delete(h.members, uid2)
-		h.Unlock()
 	}
 }
