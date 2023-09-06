@@ -67,7 +67,7 @@ func testJoin() {
 }
 
 func testLeave() {
-	for i := 0; i < 3; i++ {
+	for i := 0; i < 2; i++ {
 		m := testData[i]
 
 		myHub.Leave(m)
@@ -92,7 +92,7 @@ func testNotification() {
 	for ms := range myHub.Notification() {
 		fmt.Print("receive notification: ")
 		for _, v := range ms {
-			fmt.Print(v.RoomId, "-", v.Data, ", ")
+			fmt.Print("[", v.RoomId, "] : ", v.Id, ", ")
 		}
 		fmt.Println("")
 	}
