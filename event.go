@@ -34,5 +34,17 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 }
 
 func (h *Hub) UnRegisterEvent(m *Member) {
+	h.Lock()
+	defer h.Unlock()
+	delete(h.members, m.Id)
+	memberKey := fmt.Sprintf("%s:member", h.roomKey)
+	if err := rdb.SRem(context.Background(), memberKey, m.Id).Err(); err != nil {
+		log.Fatal(err)
+	}
+
+	if rdb.SCard(context.Background(), memberKey).Val() == 0 { // 该房间内没人了
+		rdb.SRem(context.Background(), h.roomKey, m.RoomId) // 移除房间
+	}
+
 	fmt.Println("receive unregister: ", m)
 }

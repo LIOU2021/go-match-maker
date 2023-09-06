@@ -22,8 +22,8 @@ func main() {
 
 	myHub = gomatchmakek.New(&config)
 
-	go testJoin()
-	go testLeave()
+	testJoin()
+	testLeave()
 	go testNotification()
 
 	myHub.Join(&gomatchmakek.Member{ // 增加初始化不存在的room做测试
@@ -36,6 +36,8 @@ func main() {
 	myHub.Run()
 }
 
+var testData []*gomatchmakek.Member
+
 func testJoin() {
 	for i := 0; i < 10; i++ {
 		m := &gomatchmakek.Member{
@@ -43,17 +45,14 @@ func testJoin() {
 			Id:     uuid.New().String(),
 			RoomId: testGetRoomId(i),
 		}
-
+		testData = append(testData, m)
 		myHub.Join(m)
 	}
 }
 
 func testLeave() {
-	for i := 10; i > 0; i-- {
-		m := &gomatchmakek.Member{
-			Data:   i,
-			RoomId: testGetRoomId(i),
-		}
+	for i := 0; i < 5; i++ {
+		m := testData[i]
 
 		myHub.Leave(m)
 	}
