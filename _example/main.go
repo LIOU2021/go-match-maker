@@ -14,7 +14,7 @@ import (
 
 var myHub *gomatchmaker.Hub
 
-var count = 500 // 模擬幾個參與者併發
+var count = 1000 // 模擬幾個參與者併發
 var matchCount = 0
 var unMatchCount = 0
 var unRegisterCount = 0
@@ -141,11 +141,13 @@ func testGetRoomId(i int) (roomId string) {
 func testNotification() {
 	for ms := range myHub.Notification() {
 		fmt.Print("receive notification: ")
+		msg := ""
 		for _, v := range ms {
-			fmt.Print("[", v.RoomId, "] : ", v.Id, ", ")
+			msg += fmt.Sprint("[", v.RoomId, "] : ", v.Id, ", ")
 			matchCount++
 		}
-		fmt.Println("")
+		fmt.Println(msg)
+		msg = ""
 	}
 	fmt.Println("matchCount: ", matchCount)
 }
