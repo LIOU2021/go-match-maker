@@ -130,6 +130,9 @@ func (h *Hub) Run() {
 
 // 这个方法会堵塞，直到正常关闭hub
 func (h *Hub) Close() {
+	h.Lock()
+	defer h.Unlock()
+
 	go func() {
 		h.shutDown <- struct{}{}
 	}()
