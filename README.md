@@ -6,5 +6,4 @@
     ```
 
 # todo
-- example脚本不知道为啥总是执行失败
 - 测试api server是否正常运作，以及测试get members

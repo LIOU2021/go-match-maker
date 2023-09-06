@@ -15,12 +15,13 @@ var Release mode = "release"
 var closeSignal = make(chan struct{}, 1)
 
 type Config struct {
-	HubName        string
+	HubName        string // redis key name
 	RegisterBuff   int
 	BroadcastBuff  int
 	UnRegisterBuff int
-	Room           []string // 有哪些房间
-	Mode           mode
+	Room           []string      // 有哪些房间
+	Mode           mode          // 開發模式
+	Interval       time.Duration // 搓合執行間格
 }
 
 type Member struct {
@@ -38,7 +39,8 @@ type Hub struct {
 	roomKey     string             // 存放在缓存的key名称
 	members     map[string]*Member // 存总用户。key为user id
 	sync.Mutex
-	mode mode // 模式
+	mode     mode          // 模式
+	Interval time.Duration // 搓合執行間格
 }
 
 func (h *Hub) GetMembers() map[string]*Member {
@@ -61,6 +63,13 @@ func New(config *Config) *Hub {
 		mode = Debug
 	}
 
+	var t time.Duration
+	if config.Interval <= time.Millisecond*50 {
+		t = time.Millisecond * 50
+	} else {
+		t = config.Interval
+	}
+
 	return &Hub{
 		register:    make(chan *Member, config.RegisterBuff),
 		broadcast:   make(chan []*Member, config.BroadcastBuff),
@@ -70,6 +79,7 @@ func New(config *Config) *Hub {
 		roomKey:     config.HubName,
 		members:     make(map[string]*Member),
 		mode:        mode,
+		Interval:    t,
 	}
 }
 
@@ -168,7 +178,7 @@ func (h *Hub) executeMatchRunner() {
 			return
 		default:
 			if len := rdb.SCard(ctx, h.roomKey).Val(); len < 2 {
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(h.Interval)
 				fmt.Println("群组数量不足，等待中...")
 				continue
 			}
@@ -180,13 +190,13 @@ func (h *Hub) executeMatchRunner() {
 			memberKey2 := fmt.Sprintf("%s:member:%s", h.roomKey, r2)
 
 			if len := rdb.SCard(ctx, memberKey1).Val(); len == 0 {
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(h.Interval)
 				fmt.Printf("%s 成员数量不足，等待中...\n", memberKey1)
 				continue
 			}
 
 			if len := rdb.SCard(ctx, memberKey2).Val(); len == 0 {
-				time.Sleep(200 * time.Millisecond)
+				time.Sleep(h.Interval)
 				fmt.Printf("%s 成员数量不足，等待中...\n", memberKey1)
 				continue
 			}

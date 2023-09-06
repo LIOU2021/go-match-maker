@@ -18,7 +18,8 @@ func main() {
 		Room:           []string{"a", "b", "c", "d"},
 		HubName:        "go-match-maker",
 		// Mode:           gomatchmakek.Debug,
-		Mode: gomatchmakek.Release,
+		Mode:     gomatchmakek.Release,
+		Interval: time.Millisecond * 200,
 	}
 
 	myHub = gomatchmakek.New(&config)
