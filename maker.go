@@ -93,13 +93,13 @@ func (h *Hub) Run() {
 		case m := <-h.register:
 			go func() {
 				if err := h.RegisterEvent(m); err != nil {
-					fmt.Printf("[registerEvent Err] id: %s - %v\n", m.Id, err)
+					fmt.Printf("[registerEvent Err] - roomId:%s, id: %s - %v\n", m.RoomId, m.Id, err)
 				}
 			}()
 		case m := <-h.unRegister:
 			go func() {
 				if err := h.UnRegisterEvent(m); err != nil {
-					fmt.Printf("[unregisterEvent Err] id: %s - %v\n", m.Id, err)
+					fmt.Printf("[unregisterEvent Err] - roomId:%s, id: %s - %v\n", m.RoomId, m.Id, err)
 				}
 			}()
 		case <-h.shutDown:
@@ -109,37 +109,37 @@ func (h *Hub) Run() {
 			close(h.shutDown)
 			h.runnerClose <- struct{}{}
 			close(h.runnerClose)
-
-			if h.mode == Release {
-				for {
-					var keys []string
-					var err error
-					var cursor uint64
-					keys, cursor, err = rdb.SScan(context.Background(), h.roomKey, cursor, "*", 10).Result()
-					if err != nil {
-						log.Fatal(err)
-					}
-
-					for _, roomId := range keys {
-						memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, roomId)
-						rdb.Del(context.Background(), memberKey)
-					}
-
-					// 没有更多key了
-					if cursor == 0 {
-						break
-					}
-				}
-
-				rdb.Del(context.Background(), h.roomKey)
-
-			}
+			h.ClearCache()
 
 			fmt.Println("close match maker")
 			closeSignal <- struct{}{}
 			return
 		}
 	}
+}
+
+func (h *Hub) ClearCache() {
+	for {
+		var keys []string
+		var err error
+		var cursor uint64
+		keys, cursor, err = rdb.SScan(context.Background(), h.roomKey, cursor, "*", 10).Result()
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		for _, roomId := range keys {
+			memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, roomId)
+			rdb.Del(context.Background(), memberKey)
+		}
+
+		// 没有更多key了
+		if cursor == 0 {
+			break
+		}
+	}
+
+	rdb.Del(context.Background(), h.roomKey)
 }
 
 // 这个方法会堵塞，直到正常关闭hub
@@ -179,25 +179,25 @@ func (h *Hub) executeMatchRunner() {
 		default:
 			if len := rdb.SCard(ctx, h.roomKey).Val(); len < 2 {
 				time.Sleep(h.Interval)
-				fmt.Println("群组数量不足，等待中...")
+				h.DebugLog("群组数量不足，等待中...\n")
 				continue
 			}
 
 			rooms := rdb.SRandMemberN(ctx, h.roomKey, 2).Val()
 			r1, r2 := rooms[0], rooms[1]
-			fmt.Printf("筛选出房间 - r1: %s, r2: %s \n", r1, r2)
+			h.DebugLog("筛选出房间 - r1: %s, r2: %s \n", r1, r2)
 			memberKey1 := fmt.Sprintf("%s:member:%s", h.roomKey, r1)
 			memberKey2 := fmt.Sprintf("%s:member:%s", h.roomKey, r2)
 
 			if len := rdb.SCard(ctx, memberKey1).Val(); len == 0 {
 				time.Sleep(h.Interval)
-				fmt.Printf("%s 成员数量不足，等待中...\n", memberKey1)
+				h.DebugLog("%s 成员数量不足，等待中...\n", memberKey1)
 				continue
 			}
 
 			if len := rdb.SCard(ctx, memberKey2).Val(); len == 0 {
 				time.Sleep(h.Interval)
-				fmt.Printf("%s 成员数量不足，等待中...\n", memberKey1)
+				h.DebugLog("%s 成员数量不足，等待中...\n", memberKey1)
 				continue
 			}
 
@@ -215,5 +215,11 @@ func (h *Hub) executeMatchRunner() {
 			h.Unlock()
 		}
 
+	}
+}
+
+func (h *Hub) DebugLog(format string, arg ...any) {
+	if h.mode == Debug {
+		fmt.Printf(format, arg...)
 	}
 }

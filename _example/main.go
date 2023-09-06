@@ -32,7 +32,12 @@ func main() {
 
 	go testNewData()
 
-	time.AfterFunc(2*time.Second, myHub.Close)
+	time.AfterFunc(2*time.Second, func() {
+		for _, m := range myHub.GetMembers() {
+			fmt.Printf("剩餘roomId: %s, Id: %s\n", m.RoomId, m.Id)
+		}
+		myHub.Close()
+	})
 
 	select {}
 }
@@ -87,7 +92,7 @@ func testNotification() {
 	for ms := range myHub.Notification() {
 		fmt.Print("receive notification: ")
 		for _, v := range ms {
-			fmt.Print(v.Data, ", ")
+			fmt.Print(v.RoomId, "-", v.Data, ", ")
 		}
 		fmt.Println("")
 	}

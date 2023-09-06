@@ -16,7 +16,7 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 
 	if !rdb.SIsMember(context.Background(), h.roomKey, m.RoomId).Val() {
 		rdb.SAdd(context.Background(), h.roomKey, m.RoomId)
-		fmt.Println("add room in set: ", m.RoomId)
+		h.DebugLog("add room in set: %s\n", m.RoomId)
 	}
 
 	memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, m.RoomId)
@@ -29,7 +29,7 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 	}
 
 	h.members[m.Id] = m
-	fmt.Println("receive register: ", m)
+	fmt.Printf("receive register - roomId: %s, userId: %s \n", m.RoomId, m.Id)
 	return
 }
 
@@ -52,6 +52,6 @@ func (h *Hub) UnRegisterEvent(m *Member) (err error) {
 		rdb.SRem(context.Background(), h.roomKey, m.RoomId) // 移除房间
 	}
 
-	fmt.Println("receive unregister: ", m)
+	fmt.Printf("receive unregister - roomId: %s, userId: %s \n", m.RoomId, m.Id)
 	return
 }
