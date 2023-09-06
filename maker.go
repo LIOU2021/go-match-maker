@@ -167,9 +167,21 @@ func (h *Hub) executeMatchRunner() {
 
 		rooms := rdb.SRandMemberN(ctx, h.roomKey, 2).Val()
 		r1, r2 := rooms[0], rooms[1]
-		fmt.Printf("r1: %s, r2: %s \n", r1, r2)
+		fmt.Printf("筛选出房间 - r1: %s, r2: %s \n", r1, r2)
 		memberKey1 := fmt.Sprintf("%s:member:%s", h.roomKey, r1)
 		memberKey2 := fmt.Sprintf("%s:member:%s", h.roomKey, r2)
+
+		if len := rdb.SCard(ctx, memberKey1).Val(); len == 0 {
+			time.Sleep(200 * time.Millisecond)
+			fmt.Println("成员数量不足，等待中...")
+			continue
+		}
+
+		if len := rdb.SCard(ctx, memberKey2).Val(); len == 0 {
+			time.Sleep(200 * time.Millisecond)
+			fmt.Println("成员数量不足，等待中...")
+			continue
+		}
 
 		h.Lock()
 
