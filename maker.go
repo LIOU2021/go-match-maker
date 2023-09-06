@@ -23,17 +23,17 @@ type Config struct {
 
 type Member struct {
 	Data   interface{}
-	Id     int
+	Id     string
 	RoomId string
 }
 
 type Hub struct {
-	register   chan *Member    // 加入撮合
-	broadcast  chan []*Member  // 撮合成功推播
-	unRegister chan *Member    // 退出撮合
-	shutDown   chan struct{}   // 关闭服务
-	roomKey    string          // 存放在缓存的key名称
-	members    map[int]*Member // 存总用户
+	register   chan *Member       // 加入撮合
+	broadcast  chan []*Member     // 撮合成功推播
+	unRegister chan *Member       // 退出撮合
+	shutDown   chan struct{}      // 关闭服务
+	roomKey    string             // 存放在缓存的key名称
+	members    map[string]*Member // 存总用户
 	sync.Mutex
 	mode mode // 模式
 }
@@ -60,7 +60,7 @@ func New(config *Config) *Hub {
 		unRegister: make(chan *Member, config.UnRegisterBuff),
 		shutDown:   make(chan struct{}),
 		roomKey:    config.HubName,
-		members:    make(map[int]*Member),
+		members:    make(map[string]*Member),
 		mode:       mode,
 	}
 }

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	gomatchmakek "github.com/LIOU2021/go-match-maker"
+	"github.com/google/uuid"
 )
 
 var myHub *gomatchmakek.Hub
@@ -39,6 +40,7 @@ func testJoin() {
 	for i := 0; i < 10; i++ {
 		m := &gomatchmakek.Member{
 			Data:   i,
+			Id:     uuid.New().String(),
 			RoomId: testGetRoomId(i),
 		}
 
