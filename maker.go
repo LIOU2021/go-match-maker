@@ -1,8 +1,13 @@
 package gomatchmaker
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"log"
+)
 
 type Config struct {
+	HubName        string
 	RegisterBuff   int
 	BroadcastBuff  int
 	UnRegisterBuff int
@@ -19,15 +24,24 @@ type Hub struct {
 	broadcast  chan []*Member // 撮合成功推播
 	unRegister chan *Member   // 退出撮合
 	shutDown   chan struct{}  // 关闭服务
+	roomKey    string         // 存放在缓存的key名称
 }
 
 // new hub instance
 func New(config *Config) *Hub {
+	if len(config.Room) > 0 {
+		err := rdb.SAdd(context.Background(), config.HubName, config.Room).Err()
+		if err != nil {
+			log.Fatal(err)
+		}
+	}
+
 	return &Hub{
 		register:   make(chan *Member, config.RegisterBuff),
 		broadcast:  make(chan []*Member, config.BroadcastBuff),
 		unRegister: make(chan *Member, config.UnRegisterBuff),
 		shutDown:   make(chan struct{}),
+		roomKey:    config.HubName,
 	}
 }
 
@@ -45,6 +59,7 @@ func (h *Hub) Run() {
 			close(h.broadcast)
 			close(h.unRegister)
 			close(h.shutDown)
+			rdb.Del(context.Background(), h.roomKey)
 			fmt.Println("close match maker")
 			return
 		}
