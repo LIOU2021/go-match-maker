@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"sync"
+	"time"
 )
 
 type mode string
@@ -39,6 +40,10 @@ type Hub struct {
 	mode mode // 模式
 }
 
+func (h *Hub) GetMembers() map[string]*Member {
+	return h.members
+}
+
 // new hub instance
 func New(config *Config) *Hub {
 	if len(config.Room) > 0 {
@@ -69,6 +74,8 @@ func New(config *Config) *Hub {
 // execute match maker
 func (h *Hub) Run() {
 	fmt.Println("run match maker")
+	go h.executeMatchRunner()
+
 	for {
 		select {
 		case m := <-h.register:
@@ -143,4 +150,35 @@ func (h *Hub) Leave(member *Member) {
 // receive match notification
 func (h *Hub) Notification() <-chan []*Member {
 	return h.broadcast
+}
+
+// 撮合配对
+func (h *Hub) executeMatchRunner() {
+	ctx := context.Background()
+	for {
+		if len := rdb.SCard(ctx, h.roomKey).Val(); len < 2 {
+			time.Sleep(200 * time.Millisecond)
+			fmt.Println("群组数量不足，等待中...")
+			continue
+		}
+
+		rooms := rdb.SRandMemberN(ctx, h.roomKey, 2).Val()
+		r1, r2 := rooms[0], rooms[1]
+		fmt.Printf("r1: %s, r2: %s \n", r1, r2)
+		memberKey1 := fmt.Sprintf("%s:member:%s", h.roomKey, r1)
+		memberKey2 := fmt.Sprintf("%s:member:%s", h.roomKey, r2)
+
+		h.Lock()
+
+		uid1 := rdb.SPop(ctx, memberKey1).Val()
+		uid2 := rdb.SPop(ctx, memberKey2).Val()
+
+		h.broadcast <- []*Member{
+			h.members[uid1],
+			h.members[uid2],
+		}
+		delete(h.members, uid1)
+		delete(h.members, uid2)
+		h.Unlock()
+	}
 }

@@ -28,6 +28,10 @@ func main() {
 
 	r := gin.Default()
 
+	r.GET("members", func(c *gin.Context) {
+		c.JSON(200, myHub.GetMembers())
+	})
+
 	r.POST("join", func(c *gin.Context) {
 		r := &req{}
 
@@ -70,6 +74,12 @@ func main() {
 	}
 
 	ch := make(chan os.Signal, 1)
+
+	go func() {
+		for ms := range myHub.Notification() {
+			fmt.Println("撮合成功： ", ms[0], ms[1])
+		}
+	}()
 
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
