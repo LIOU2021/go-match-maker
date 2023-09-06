@@ -4,7 +4,13 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"sync"
 )
+
+type mode string
+
+var Debug mode = "debug"
+var Release mode = "release"
 
 type Config struct {
 	HubName        string
@@ -12,19 +18,24 @@ type Config struct {
 	BroadcastBuff  int
 	UnRegisterBuff int
 	Room           []string // 有哪些房间
+	Mode           mode
 }
 
 type Member struct {
 	Data   interface{}
+	Id     int
 	RoomId string
 }
 
 type Hub struct {
-	register   chan *Member   // 加入撮合
-	broadcast  chan []*Member // 撮合成功推播
-	unRegister chan *Member   // 退出撮合
-	shutDown   chan struct{}  // 关闭服务
-	roomKey    string         // 存放在缓存的key名称
+	register   chan *Member    // 加入撮合
+	broadcast  chan []*Member  // 撮合成功推播
+	unRegister chan *Member    // 退出撮合
+	shutDown   chan struct{}   // 关闭服务
+	roomKey    string          // 存放在缓存的key名称
+	members    map[int]*Member // 存总用户
+	sync.Mutex
+	mode mode // 模式
 }
 
 // new hub instance
@@ -36,12 +47,21 @@ func New(config *Config) *Hub {
 		}
 	}
 
+	var mode mode
+	if config.Mode == Release {
+		mode = Release
+	} else {
+		mode = Debug
+	}
+
 	return &Hub{
 		register:   make(chan *Member, config.RegisterBuff),
 		broadcast:  make(chan []*Member, config.BroadcastBuff),
 		unRegister: make(chan *Member, config.UnRegisterBuff),
 		shutDown:   make(chan struct{}),
 		roomKey:    config.HubName,
+		members:    make(map[int]*Member),
+		mode:       mode,
 	}
 }
 
@@ -59,7 +79,11 @@ func (h *Hub) Run() {
 			close(h.broadcast)
 			close(h.unRegister)
 			close(h.shutDown)
-			rdb.Del(context.Background(), h.roomKey)
+
+			if h.mode == Release {
+				rdb.Del(context.Background(), h.roomKey)
+			}
+
 			fmt.Println("close match maker")
 			return
 		}

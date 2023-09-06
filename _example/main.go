@@ -16,6 +16,7 @@ func main() {
 		UnRegisterBuff: 200,
 		Room:           []string{"a", "b", "c", "d"},
 		HubName:        "go-match-maker",
+		Mode:           gomatchmakek.Debug,
 	}
 
 	myHub = gomatchmakek.New(&config)
