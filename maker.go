@@ -23,7 +23,7 @@ type Config struct {
 
 type Member struct {
 	Data   interface{}
-	Id     string
+	Id     string // user id
 	RoomId string
 }
 
@@ -33,7 +33,7 @@ type Hub struct {
 	unRegister chan *Member       // 退出撮合
 	shutDown   chan struct{}      // 关闭服务
 	roomKey    string             // 存放在缓存的key名称
-	members    map[string]*Member // 存总用户
+	members    map[string]*Member // 存总用户。key为user id
 	sync.Mutex
 	mode mode // 模式
 }
@@ -90,6 +90,26 @@ func (h *Hub) Run() {
 
 			if h.mode == Release {
 				rdb.Del(context.Background(), h.roomKey)
+
+				for {
+					var keys []string
+					var err error
+					var cursor uint64
+					keys, cursor, err = rdb.SScan(context.Background(), h.roomKey, cursor, "*", 0).Result()
+					if err != nil {
+						log.Fatal(err)
+					}
+
+					for _, roomId := range keys {
+						memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, roomId)
+						rdb.Del(context.Background(), memberKey)
+					}
+
+					// 没有更多key了
+					if cursor == 0 {
+						break
+					}
+				}
 			}
 
 			fmt.Println("close match maker")

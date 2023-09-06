@@ -19,7 +19,7 @@ func (h *Hub) RegisterEvent(m *Member) (err error) {
 		fmt.Println("add room in set: ", m.RoomId)
 	}
 
-	memberKey := fmt.Sprintf("%s:member", h.roomKey)
+	memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, m.RoomId)
 	if err := rdb.SAdd(context.Background(), memberKey, m.Id).Err(); err != nil {
 		log.Fatal(err)
 	}
@@ -38,7 +38,7 @@ func (h *Hub) UnRegisterEvent(m *Member) (err error) {
 	defer h.Unlock()
 	delete(h.members, m.Id)
 
-	memberKey := fmt.Sprintf("%s:member", h.roomKey)
+	memberKey := fmt.Sprintf("%s:member:%s", h.roomKey, m.RoomId)
 
 	if !rdb.SIsMember(context.Background(), memberKey, m.Id).Val() {
 		return ErrMemberNotExists
