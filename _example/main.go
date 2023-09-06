@@ -17,8 +17,8 @@ func main() {
 		UnRegisterBuff: 200,
 		Room:           []string{"a", "b", "c", "d"},
 		HubName:        "go-match-maker",
-		// Mode:           gomatchmakek.Debug,
-		Mode: gomatchmakek.Release,
+		Mode:           gomatchmakek.Debug,
+		// Mode: gomatchmakek.Release,
 	}
 
 	myHub = gomatchmakek.New(&config)
@@ -27,18 +27,24 @@ func main() {
 	testLeave()
 	go testNotification()
 
-	myHub.Join(&gomatchmakek.Member{ // 增加初始化不存在的room做测试
-		Data:   99,
-		RoomId: "e",
-		Id:     uuid.New().String(),
-	})
+	go testNewData()
 
-	time.AfterFunc(1*time.Second, myHub.Close)
+	time.AfterFunc(2*time.Second, myHub.Close)
 
 	myHub.Run()
 }
 
 var testData []*gomatchmakek.Member
+
+func testNewData() {
+	testNewData := &gomatchmakek.Member{ // 增加初始化不存在的room做测试
+		Data:   99,
+		RoomId: "e",
+		Id:     uuid.New().String(),
+	}
+	myHub.Join(testNewData)
+	myHub.Leave(testNewData)
+}
 
 func testJoin() {
 	for i := 0; i < 6; i++ {
