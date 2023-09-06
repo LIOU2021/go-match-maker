@@ -22,8 +22,23 @@ type req struct {
 	Id     string      `json:"id" binding:"required"` // user id
 }
 
+func init() {
+	config := gomatchmakek.Config{
+		RegisterBuff:   200,
+		BroadcastBuff:  200,
+		UnRegisterBuff: 200,
+		Room:           []string{"a", "b", "c", "d"},
+		HubName:        "go-match-maker",
+		// Mode:           gomatchmakek.Debug,
+		Mode: gomatchmakek.Release,
+	}
+
+	myHub = gomatchmakek.New(&config)
+
+	go myHub.Run()
+}
+
 func main() {
-	go initMatchMaker()
 	gin.SetMode(gin.ReleaseMode)
 
 	r := gin.Default()
@@ -97,20 +112,4 @@ func main() {
 		fmt.Println("srv.Shutdown:", err)
 	}
 	myHub.Close()
-}
-
-func initMatchMaker() {
-	config := gomatchmakek.Config{
-		RegisterBuff:   200,
-		BroadcastBuff:  200,
-		UnRegisterBuff: 200,
-		Room:           []string{"a", "b", "c", "d"},
-		HubName:        "go-match-maker",
-		// Mode:           gomatchmakek.Debug,
-		Mode: gomatchmakek.Release,
-	}
-
-	myHub = gomatchmakek.New(&config)
-
-	myHub.Run()
 }
