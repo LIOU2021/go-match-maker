@@ -19,8 +19,11 @@ func main() {
 	myHub = gomatchmakek.New(&config)
 
 	go testJoin()
+	go testLeave()
 	go testNotification()
+
 	time.AfterFunc(1*time.Second, myHub.Close)
+
 	myHub.Run()
 }
 
@@ -31,6 +34,16 @@ func testJoin() {
 		}
 
 		myHub.Join(m)
+	}
+}
+
+func testLeave() {
+	for i := 10; i > 0; i-- {
+		m := &gomatchmakek.Member{
+			Data: i,
+		}
+
+		myHub.Leave(m)
 	}
 }
 
