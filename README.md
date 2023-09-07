@@ -11,15 +11,10 @@
 - 主要就是透过redis 集合（set）来实现
     - 第一层会以HubName命名一个key，其中会存放著所有房间，比如 "a, b, c, d ..."
         - 第二层会有数个key，根据房间ID命名key，value存放的用户的id
+- 每次取出两个房间，每个房间各取出一人
 - 其中hub.members是一个map，存放著 uid > user资料
     - 预设情况如果架设分布式架构时，也就是多台server调用```myHub.Run()```，此时```hub.members```的资料会有问题
 - 监听撮合成交是透过底下接口
     ```go
     myHub.Notification()
     ```
-# todo
-- config新增
-    - 指定房間要取幾個，預設2
-    - 每個房間內的成員要取幾個，預設1
-- 在server範例中新增ws用作監聽搓合觸發
-	- 拿之前寫的chat project來試試看可不可行
