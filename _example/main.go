@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"sync"
@@ -17,6 +18,7 @@ var myHub *gomatchmaker.Hub
 
 var count = 1000 // 模擬幾個參與者併發
 var matchCount = 0
+var matchCheck = map[string]int{}
 var unMatchCount = 0
 var unRegisterCount = 0
 var unRegisterCountMX = sync.Mutex{}
@@ -156,6 +158,11 @@ func testNotification() {
 		for _, v := range ms {
 			msg += fmt.Sprint("[", v.RoomId, "] : ", v.Id, ", ")
 			matchCount++
+
+			if _, exists := matchCheck[v.Id]; exists {
+				log.Fatalf("duplicate match - roomId: %s, id: %s", v.RoomId, v.Id)
+			}
+			matchCheck[v.Id]++
 		}
 		fmt.Println(msg)
 		msg = ""
