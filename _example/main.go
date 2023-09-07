@@ -65,7 +65,7 @@ func main() {
 	go testNewData()
 
 	time.AfterFunc(2*time.Second, func() {
-		testClose()
+		testClose(true)
 		alreadyClose = true
 	})
 
@@ -73,10 +73,10 @@ func main() {
 	signal.Notify(ch, syscall.SIGINT, syscall.SIGTERM)
 	<-ch
 
-	testClose()
+	testClose(false)
 }
 
-func testClose() {
+func testClose(mustClose bool) {
 	if alreadyClose {
 		return
 	}
@@ -88,7 +88,9 @@ func testClose() {
 	fmt.Println("unRegisterCount: ", unRegisterCount)
 	fmt.Println("unMatchCount: ", unMatchCount)
 	myHub.Close()
-	os.Exit(0)
+	if mustClose {
+		os.Exit(0)
+	}
 }
 
 var testData = struct {
