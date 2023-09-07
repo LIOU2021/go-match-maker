@@ -283,7 +283,5 @@ func (h *Hub) memberLeaveLogic(memberKey, uid string) {
 		h.DebugLog("remove room: %s\n", m.RoomId)
 	}
 
-	if _, exists := h.members[m.Id]; exists {
-		delete(h.members, m.Id)
-	}
+	delete(h.members, m.Id)
 }

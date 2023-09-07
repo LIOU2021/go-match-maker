@@ -64,7 +64,7 @@ func main() {
 
 	go testNewData()
 
-	time.AfterFunc(2*time.Second, func() {
+	time.AfterFunc(5*time.Second, func() {
 		testClose(true)
 		alreadyClose = true
 	})
