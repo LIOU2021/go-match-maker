@@ -57,8 +57,26 @@ func (h *Hub) GetMembers() map[string]Member {
 	return members
 }
 
+// 检查即将要使用的缓存是否已经存在
+// 如果存在，必须清除，否则无法正常运作
+func checkCache(hubName string) {
+	ctx := context.Background()
+	if rdb.Exists(ctx, hubName).Val() > 0 {
+		log.Fatalf("redis key '%s' already exists", hubName)
+	}
+
+	memberKeyPattern := fmt.Sprintf("%s:member:*", hubName)
+	list := rdb.Keys(ctx, memberKeyPattern).Val()
+	ln := len(list)
+	if ln > 0 {
+		log.Fatalf("redis key '%s' already exists", memberKeyPattern)
+	}
+}
+
 // new hub instance
 func New(config *Config) *Hub {
+	checkCache(config.HubName)
+
 	if len(config.Room) > 0 {
 		err := rdb.SAdd(context.Background(), config.HubName, config.Room).Err()
 		if err != nil {
